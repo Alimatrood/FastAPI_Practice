@@ -1,4 +1,6 @@
 from enum import Enum
+from typing import List
+from winreg import QueryValueEx
 from fastapi import FastAPI,Query
 from pydantic import BaseModel
 
@@ -87,15 +89,33 @@ def create_item(item:Item):
 def add_an_item_with_id(item_id:int,item:Item):
     return {"Item ID":item_id, "Item":item}
 
-#A path operation with some validations, like max_length, min_length, and a regular expression. The query is optional as it has a default value
+#A path operation with some validations, like max_length, min_length, and a regular expression which are specific for strings. The query is optional as it has a default value
 """ @app.get("/items/")
 def get_item(q:str = Query(default=None, max_length=50,min_length=3,regex="^fixedquery$")):
     return q """
 
 #A path operation with some validations. To make the query required using "Query", we use three dots for the default value. they are called ellipsis.
-@app.get("/items/")
+""" @app.get("/items/")
 def get_item(q:str = Query(...,max_length= 30)):
-    return q
+    return q """
+
+#passing a list of strings to the query parameter, using it in the url would be like this as an example: q = chips & q = shawarma. You can also specify a default value for the list if not provided.
+#if you use it without Query, it will be interpreted as a request body.
+#the query has some additional metadata like description, title, alias (the name of the query, you can use names even if they are not allowed names in python.). To declare that the parameter is deprecated, you can assign deperecated as True.
+#to set exclude a query parameter from the automatic documentation systems, set include_in_schema to False
+@app.get("/items/")
+def get_items(q:List[str] = Query([], title= "Query list", description="This is the description of the query list",alias="List[str]", deprecated=True,min_length=6 )):
+    return {"List of words":q}
+
+#This will be counted as a request body, not a query.
+""" @app.get("/items/")
+def get_items(q:List[str] = None):
+    return {"List of words":q} """
 
 
-@app.get()
+#this can also be used instead of using List[str] but it wont check about the type of the values.
+"""@app.get("/items/")
+def get_items(q:list = Query([])):
+    return {"List of words":q}"""
+
+
