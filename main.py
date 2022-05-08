@@ -1,8 +1,8 @@
 from enum import Enum
 from re import L
 from typing import List, Optional
-from fastapi import FastAPI,Query,Path
-from pydantic import BaseModel
+from fastapi import Body, FastAPI,Query,Path
+from pydantic import BaseModel, Field
 
 # /docs will open the documentation (SwaggerUI)
 # redoc will open the alternative documentation (automatic documentation)
@@ -15,8 +15,10 @@ from pydantic import BaseModel
 # Path can be used to declare a path parameter with some metadata.
 # number validations can be used with numbers such as ge; which means greater than or equal, le which means less than or equal, lt; which means less than and so on.They can also work with float.
 # When Path and Query are imported, they are actually functions.so you import Query, which is a function, and when you call it, it returns an instance of a class also named Query.
-
-
+# we also have Body, the same way that we are having Query and Path. Also, body has additional metadata like the Path and Query.
+# We can have also validation and metadata inside of Pydantic model using Field for the model attributes.
+# The Query and Path are subclasses of a common class Params, and Params itself is a subclass of Pydantic's FieldInfo class. 
+# Pydantic's Field returns an instance of FieldInfo as well.
 
 
 #This is an enum class
@@ -27,8 +29,8 @@ class Enums(str,Enum):
 #item class
 class Item(BaseModel):
     name:str
-    description:str = None
-    price:float
+    description:str = Field(None, title= "The description of the item", max_length= 100)
+    price:float = Field(...,gt = 0, description= "The price must be greater than zero.")
     tax:float = None
 
 words_list = ["Burgers","Potato chips","Shawarma"]
@@ -149,5 +151,45 @@ def get_item( *,
     item_id: int = Path(..., title="The ID of the item to get", ge=0, le=1000),
     q: str,size:float = Query(...,gt=0, lt = 10.5)):
     return {"item_id": item_id, "q":q, "size":size}
+
+
+#A path operation with multiple queries
+""" @app.put("/items/{item_id}")
+def update_item(*,
+item_id: int = Path(..., title = "The ID of the item to update", ge= 0, lt=1000),
+q:str = None,
+item: Item = None):
+    results = {"item_id":item_id}
+    if q:
+        results.update({"q":q})
+    if item:
+        results.update({"item":item})
+    return results """
+
+# A path opeartion with multiple body parameters.
+""" @app.put("/items/{item_id}")
+def update_item(*,
+item_id: int = Path(..., title = "The ID of the item to update"),
+item:Item,
+word:Word):
+    results = {"item_id":item_id, "Item":item, "Word":word}
+    return results """
+
+
+#A path operation that has a singular value as a body parameter, with a query parameter (You dont have to write Query keyword to mark it as a query as it is by default a query.)
+@app.put("/items/{item_id}")
+def update_item(item_id:int,
+item:Item,
+word:Word,
+importance:int = Body(...,gt = 0), q:int = None):
+    return {"item":item, "word":word, "importance":importance, "q":q}
+
+
+#A path operation that has a single body parameter but interpreted as an object inside a JSON with key value. 
+@app.put("/items/{item_id}")
+def update_item(item_id:int,
+item:Item = Body(...,embed= True)):
+    results = {"item ID":item_id, "Item":item}
+    return results
 
 
