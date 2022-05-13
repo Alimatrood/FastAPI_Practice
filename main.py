@@ -1,8 +1,7 @@
 from enum import Enum
-from typing import List
-from winreg import QueryValueEx
+from typing import Dict, List, Set
 from fastapi import FastAPI,Query
-from pydantic import BaseModel
+from pydantic import BaseModel,HttpUrl
 
 # /docs will open the documentation (SwaggerUI)
 # redoc will open the alternative documentation (automatic documentation)
@@ -14,6 +13,10 @@ from pydantic import BaseModel
 # if the parameter is declared in the path, it will be a path parameter, and if the paramter of type int,float,str, etc ... it will be declared as query, and if it is Pydantic model it will be in the request body.
 
 
+#Image class
+class Image(BaseModel):
+    url:HttpUrl
+    name:str
 
 #This is an enum class
 class Enums(str,Enum):
@@ -26,6 +29,26 @@ class Item(BaseModel):
     description:str = None
     price:float
     tax:float = None
+    tags: Set[str] = set()
+    image:List[Image] = None
+
+class Offer(BaseModel):
+    name:str
+    description:str
+    price:float
+    items:List[Item] = None
+#This class will be added as-is to the output of the JSON schema for that model, and will be used in the API docs. You can use the same technique to extend the JSON schema to add extra info.
+    class Config:
+        schema_extra = {
+            "example": {
+                "name":"Foo",
+                "description":"A very nice Item",
+                "price":35.4,
+                "tax": 3.2,
+
+            }
+        }
+
 
 words_list = ["Burgers","Potato chips","Shawarma"]
 
@@ -117,5 +140,16 @@ def get_items(q:List[str] = None):
 """@app.get("/items/")
 def get_items(q:list = Query([])):
     return {"List of words":q}"""
+
+
+#a path operation with an Offer object that has attributes of another pydantic model.
+@app.post("/offers/")
+def create_offer(offer:Offer):
+    return offer
+
+#a path operation with a dictionary in the body with specified types for the keys and values.Note: Json will accept only strings as the keys, and then they will be converted automatically.
+@app.post("/index-weights/")
+def create_index_weights(weights:Dict[int,float]):
+    return weights
 
 
