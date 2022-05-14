@@ -1,7 +1,8 @@
 from enum import Enum
 from typing import Dict, List, Set
-from fastapi import FastAPI,Query
-from pydantic import BaseModel,HttpUrl
+from fastapi import FastAPI,Query,Body,Path
+from pydantic import BaseModel,HttpUrl,Field
+
 
 # /docs will open the documentation (SwaggerUI)
 # redoc will open the alternative documentation (automatic documentation)
@@ -11,7 +12,13 @@ from pydantic import BaseModel,HttpUrl
 # A request body is data sent from the client to the API, while the response body is the data sent from the API to the client.
 # A request body can take more than one Pydantic model.
 # if the parameter is declared in the path, it will be a path parameter, and if the paramter of type int,float,str, etc ... it will be declared as query, and if it is Pydantic model it will be in the request body.
-
+# Path can be used to declare a path parameter with some metadata.
+# number validations can be used with numbers such as ge; which means greater than or equal, le which means less than or equal, lt; which means less than and so on.They can also work with float.
+# When Path and Query are imported, they are actually functions.so you import Query, which is a function, and when you call it, it returns an instance of a class also named Query.
+# we also have Body, the same way that we are having Query and Path. Also, body has additional metadata like the Path and Query.
+# We can have also validation and metadata inside of Pydantic model using Field for the model attributes.
+# The Query and Path are subclasses of a common class Params, and Params itself is a subclass of Pydantic's FieldInfo class. 
+# Pydantic's Field returns an instance of FieldInfo as well.
 
 #Image class
 class Image(BaseModel):
@@ -23,11 +30,11 @@ class Enums(str,Enum):
     greetings = "Hello world"
     potato = "Potato chips"
 
-#item class
+#item class. with field, we can have also example as an extra info.
 class Item(BaseModel):
     name:str
-    description:str = None
-    price:float
+    description:str = Field(None, title= "The description of the item", max_length= 100)
+    price:float = Field(...,gt = 0, description= "The price must be greater than zero.")
     tax:float = None
     tags: Set[str] = set()
     image:List[Image] = None
@@ -140,6 +147,74 @@ def get_items(q:List[str] = None):
 """@app.get("/items/")
 def get_items(q:list = Query([])):
     return {"List of words":q}"""
+
+#A path operation with a path declared using Path keyword, and adding metadatat to it, such as title.
+""" @app.get("/items/{item_id}")
+def get_item(item_id:int = Path(..., title= "The ID of the item to get"), q: Optional[str] = Query(None,title= "Optional query")):
+    return {"Item id: ": item_id, "q": q} """
+
+#A path operation with a value that will have a default and with the path that does not have a default. Python will complain if you put a value with a default before a value that does not have a default.
+""" @app.get("/items/{item_id}")
+def get_item(q:str,item_id:int = Path(..., title= "The ID of the item to get")):
+    return {"Item id: ": item_id, "q": q} """
+
+
+#if you want to order the parameters having a default argument following a non-default argument, you can pass * as the first argument.
+""" @app.get("/items/{item_id}")
+def get_item(*,item_id:int = Path(..., title= "The ID of the item to get"),q:str):
+    return {"item_id": item_id, "q":q} """
+
+#A path parameter with number validations, such as ge which means greater than or equal.
+""" @app.get("/items/{item_id}")
+def get_item(q:str,item_id: int = Path(...,title="The ID of the item to get", ge= 1)):
+    return {"item_id": item_id, "q":q} """
+
+# A float query parameter with some number validations.
+@app.get("/items/{item_id}")
+def get_item( *,
+    item_id: int = Path(..., title="The ID of the item to get", ge=0, le=1000),
+    q: str,size:float = Query(...,gt=0, lt = 10.5)):
+    return {"item_id": item_id, "q":q, "size":size}
+
+
+#A path operation with multiple queries
+""" @app.put("/items/{item_id}")
+def update_item(*,
+item_id: int = Path(..., title = "The ID of the item to update", ge= 0, lt=1000),
+q:str = None,
+item: Item = None):
+    results = {"item_id":item_id}
+    if q:
+        results.update({"q":q})
+    if item:
+        results.update({"item":item})
+    return results """
+
+# A path opeartion with multiple body parameters.
+""" @app.put("/items/{item_id}")
+def update_item(*,
+item_id: int = Path(..., title = "The ID of the item to update"),
+item:Item,
+word:Word):
+    results = {"item_id":item_id, "Item":item, "Word":word}
+    return results """
+
+
+#A path operation that has a singular value as a body parameter, with a query parameter (You dont have to write Query keyword to mark it as a query as it is by default a query.)
+@app.put("/items/{item_id}")
+def update_item(item_id:int,
+item:Item,
+word:Word,
+importance:int = Body(...,gt = 0), q:int = None):
+    return {"item":item, "word":word, "importance":importance, "q":q}
+
+
+#A path operation that has a single body parameter but interpreted as an object inside a JSON with key value. 
+@app.put("/items/{item_id}")
+def update_item(item_id:int,
+item:Item = Body(...,embed= True)):
+    results = {"item ID":item_id, "Item":item}
+    return results
 
 
 #a path operation with an Offer object that has attributes of another pydantic model.
